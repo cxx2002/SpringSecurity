@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/xx_blog?characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  redis:
+    host: 192.168.223.140 # 本地IP 或是 虚拟机IP 127.0.0.1（上线）
+    port: 6379
+    # password: 123456
+    database: 0  # 默认使用 0号db
+
+  cache:
+    redis:
+      time-to-live: 1800000  # 设置缓存数据的过期时间 30分钟
+
+mybatis-plus:
+  configuration:
+    # 日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: delFlag
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      id-type: auto
+  mapper-locations: classpath*:/mapper/**/*.xml  # 默认就是这个
