@@ -2,7 +2,7 @@
 
 ## 最重要的流程图
 
-![image-20211214151515385](img/image-20211214151515385.png)
+![image](http://xxblog.xyz/2023/01/09/5720b508213e4187b9bf5da34db01d8c.png)
 
 ## 0. 简介
 
@@ -101,7 +101,7 @@ public class HelloController {
 
 ### 2.1 登陆校验流程
 
-![image-20211215094003288](img/image-20211215094003288.png)
+![image](http://xxblog.xyz/2023/01/09/313f9ab75955477eb34314ef8e9941e2.png)
 
 ### 2.2 原理初探
 
@@ -113,7 +113,7 @@ public class HelloController {
 
 ​	SpringSecurity的原理其实就是一个过滤器链，内部包含了提供各种功能的过滤器。这里我们可以看看入门案例中的过滤器。
 
-![image-20211214144425527](img/image-20211214144425527.png)
+![image](http://xxblog.xyz/2023/01/09/ce8a2b6cd69640c2833c7268f7f7f657.png)
 
 ​	图中只展示了核心过滤器，其它的非核心过滤器并没有在图中展示。
 
@@ -127,7 +127,7 @@ public class HelloController {
 
 ​	我们可以通过Debug查看当前系统中SpringSecurity过滤器链中有哪些过滤器及它们的顺序。
 
-![image-20211214145824903](img/image-20211214145824903.png)
+![image](http://xxblog.xyz/2023/01/09/f9d5a56739d24ea9914f2739b0317776.png)
 
 
 
@@ -135,7 +135,7 @@ public class HelloController {
 
 #### 2.2.2 认证流程详解
 
-![image-20211214151515385](img/image-20211214151515385.png)
+![image](http://xxblog.xyz/2023/01/09/5720b508213e4187b9bf5da34db01d8c.png)
 
 概念速查:
 
@@ -206,22 +206,9 @@ UserDetails接口：提供核心用户信息。通过UserDetailsService根据用
 ② 添加Redis相关配置
 
 ~~~~java
-
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
-import org.springframework.data.redis.serializer.RedisSerializer;
-import org.springframework.data.redis.serializer.SerializationException;
-import com.alibaba.fastjson.parser.ParserConfig;
-import org.springframework.util.Assert;
-import java.nio.charset.Charset;
-
 /**
- * Redis使用FastJson序列化
- * 
- * @author sg
+ * @author 陈喜喜
+ * @date 2023-01-06 15:42
  */
 public class FastJsonRedisSerializer<T> implements RedisSerializer<T>
 {
@@ -272,19 +259,18 @@ public class FastJsonRedisSerializer<T> implements RedisSerializer<T>
 ~~~~
 
 ~~~~java
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
-
+/**
+ * @author 陈喜喜
+ * @date 2023-01-06 15:43
+ */
 @Configuration
 public class RedisConfig {
+    @Resource
+    private RedisConnectionFactory connectionFactory;
 
     @Bean
     @SuppressWarnings(value = { "unchecked", "rawtypes" })
-    public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory connectionFactory)
+    public RedisTemplate<Object, Object> redisTemplate()
     {
         RedisTemplate<Object, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
@@ -303,77 +289,33 @@ public class RedisConfig {
         return template;
     }
 }
+
 ~~~~
 
 ③ 响应类
 
 ~~~~java
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 /**
- * @Author 三更  B站： https://space.bilibili.com/663528522
+ * @author 陈喜喜
+ * @date 2023-01-06 15:46
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)  //除去json数据中的空值
 public class ResponseResult<T> {
-    /**
-     * 状态码
-     */
-    private Integer code;
-    /**
-     * 提示信息，如果有错误时，前端可以获取该字段进行提示
-     */
-    private String msg;
-    /**
-     * 查询到的结果数据，
-     */
-    private T data;
+    private Integer code;//状态码
+    private String msg;//提示信息
+    private T data;//结果数据
 
-    public ResponseResult(Integer code, String msg) {
-        this.code = code;
-        this.msg = msg;
-    }
-
-    public ResponseResult(Integer code, T data) {
-        this.code = code;
-        this.data = data;
-    }
-
-    public Integer getCode() {
-        return code;
-    }
-
-    public void setCode(Integer code) {
-        this.code = code;
-    }
-
-    public String getMsg() {
-        return msg;
-    }
-
-    public void setMsg(String msg) {
-        this.msg = msg;
-    }
-
-    public T getData() {
-        return data;
-    }
-
-    public void setData(T data) {
-        this.data = data;
-    }
-
-    public ResponseResult(Integer code, String msg, T data) {
-        this.code = code;
-        this.msg = msg;
-        this.data = data;
-    }
 }
+
 ~~~~
 
 ④工具类
 
 ~~~~java
+package com.cxx.utils;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtBuilder;
@@ -387,20 +329,20 @@ import java.util.Date;
 import java.util.UUID;
 
 /**
- * JWT工具类
+ * @author 陈喜喜
+ * @date 2023-01-06 15:51
  */
 public class JwtUtil {
-
     //有效期为
-    public static final Long JWT_TTL = 60 * 60 *1000L;// 60 * 60 *1000  一个小时
+    public static final Long JWT_TTL = 4 * 60 * 60 *1000L;// 60 * 60 *1000  一个小时
     //设置秘钥明文
-    public static final String JWT_KEY = "sangeng";
+    public static final String JWT_KEY = "xixi";
 
     public static String getUUID(){
         String token = UUID.randomUUID().toString().replaceAll("-", "");
         return token;
     }
-    
+
     /**
      * 生成jtw
      * @param subject token中要存放的数据（json格式）
@@ -453,12 +395,6 @@ public class JwtUtil {
         return builder.compact();
     }
 
-    public static void main(String[] args) throws Exception {
-        String token = "eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJjYWM2ZDVhZi1mNjVlLTQ0MDAtYjcxMi0zYWEwOGIyOTIwYjQiLCJzdWIiOiJzZyIsImlzcyI6InNnIiwiaWF0IjoxNjM4MTA2NzEyLCJleHAiOjE2MzgxMTAzMTJ9.JVsSbkP94wuczb4QryQbAke3ysBDIL5ou8fWsbt_ebg";
-        Claims claims = parseJWT(token);
-        System.out.println(claims);
-    }
-
     /**
      * 生成加密后的秘钥 secretKey
      * @return
@@ -468,7 +404,7 @@ public class JwtUtil {
         SecretKey key = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
         return key;
     }
-    
+
     /**
      * 解析
      *
@@ -486,18 +422,32 @@ public class JwtUtil {
 
 
 }
+
 ~~~~
 
 ~~~~java
+package com.cxx.utils;
 
+import org.springframework.data.redis.core.BoundSetOperations;
+import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.Resource;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-@SuppressWarnings(value = { "unchecked", "rawtypes" })
+/**
+ * @author 陈喜喜
+ * @date 2023-01-06 15:53
+ *
+ * Redis工具类，封装RedisTemplate
+ */
+@SuppressWarnings(value={"unchecked","rawtypes"})  //告诉编译器忽略指定的警告，不用在编译完成后出现警告信息
 @Component
-public class RedisCache
-{
-    @Autowired
+public class RedisCache {
+    @Resource
     public RedisTemplate redisTemplate;
 
     /**
@@ -509,6 +459,10 @@ public class RedisCache
     public <T> void setCacheObject(final String key, final T value)
     {
         redisTemplate.opsForValue().set(key, value);
+    }
+    public <T> void setCacheObject(final String key, final T value, long timeout, TimeUnit timeUnit)
+    {
+        redisTemplate.opsForValue().set(key, value, timeout, timeUnit);
     }
 
     /**
@@ -684,9 +638,14 @@ public class RedisCache
         return opsForHash.get(key, hKey);
     }
 
+
+    public void incrementCacheMapValue(String key,String hKey,int v){
+        redisTemplate.opsForHash().increment(key,hKey,v);
+    }
+
     /**
      * 删除Hash中的数据
-     * 
+     *
      * @param key
      * @param hkey
      */
@@ -719,23 +678,28 @@ public class RedisCache
         return redisTemplate.keys(pattern);
     }
 }
+
 ~~~~
 
 ~~~~java
+package com.cxx.utils;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-public class WebUtils
-{
+/**
+ * @author 陈喜喜
+ * @date 2023-01-06 15:58
+ */
+public class WebUtils {
     /**
      * 将字符串渲染到客户端
-     * 
+     *
      * @param response 渲染对象
      * @param string 待渲染的字符串
      * @return null
      */
-    public static String renderString(HttpServletResponse response, String string) {
+    public static void renderString(HttpServletResponse response, String string) {
         try
         {
             response.setStatus(200);
@@ -747,89 +711,117 @@ public class WebUtils
         {
             e.printStackTrace();
         }
-        return null;
     }
+
 }
+
 ~~~~
 
 ⑤实体类
 
 ~~~~java
+package com.cxx.domain;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
 import java.util.Date;
 
-
 /**
- * 用户表(User)实体类
- *
- * @author 三更
+ * 用户表
+ * @author 陈喜喜
+ * @TableName sys_user
  */
+@TableName(value ="sys_user")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class User implements Serializable {
-    private static final long serialVersionUID = -40356785423868312L;
-    
     /**
-    * 主键
-    */
+     * 主键
+     */
+    @TableId(type = IdType.AUTO)
     private Long id;
+
     /**
-    * 用户名
-    */
+     * 用户名
+     */
     private String userName;
+
     /**
-    * 昵称
-    */
+     * 昵称
+     */
     private String nickName;
+
     /**
-    * 密码
-    */
+     * 密码
+     */
     private String password;
+
     /**
-    * 账号状态（0正常 1停用）
-    */
+     * 用户类型：0代表普通用户，1代表管理员
+     */
+    private String type;
+
+    /**
+     * 账号状态（0正常 1停用）
+     */
     private String status;
+
     /**
-    * 邮箱
-    */
+     * 邮箱
+     */
     private String email;
+
     /**
-    * 手机号
-    */
+     * 手机号
+     */
     private String phonenumber;
+
     /**
-    * 用户性别（0男，1女，2未知）
-    */
+     * 用户性别（0男，1女，2未知）
+     */
     private String sex;
+
     /**
-    * 头像
-    */
+     * 头像
+     */
     private String avatar;
+
     /**
-    * 用户类型（0管理员，1普通用户）
-    */
-    private String userType;
-    /**
-    * 创建人的用户id
-    */
+     * 创建人的用户id
+     */
     private Long createBy;
+
     /**
-    * 创建时间
-    */
+     * 创建时间
+     */
     private Date createTime;
+
     /**
-    * 更新人
-    */
+     * 更新人
+     */
     private Long updateBy;
+
     /**
-    * 更新时间
-    */
+     * 更新时间
+     */
     private Date updateTime;
+
     /**
-    * 删除标志（0代表未删除，1代表已删除）
-    */
+     * 删除标志（0代表未删除，1代表已删除）
+     */
     private Integer delFlag;
+
+    @TableField(exist = false)
+    private static final long serialVersionUID = 1L;
+
 }
 ~~~~
 
@@ -885,7 +877,7 @@ CREATE TABLE `sys_user` (
 ~~~~yml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/sg_security?characterEncoding=utf-8&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/xx_security?characterEncoding=utf-8&serverTimezone=UTC
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -926,26 +918,6 @@ public class SimpleSecurityApplication {
         </dependency>
 ~~~~
 
-​	   测试MP是否能正常使用
-
-~~~~java
-/**
- * @Author 三更  B站： https://space.bilibili.com/663528522
- */
-@SpringBootTest
-public class MapperTest {
-
-    @Autowired
-    private UserMapper userMapper;
-
-    @Test
-    public void testUserMapper(){
-        List<User> users = userMapper.selectList(null);
-        System.out.println(users);
-    }
-}
-~~~~
-
 
 
 ###### 核心代码实现
@@ -953,50 +925,117 @@ public class MapperTest {
 创建一个类实现UserDetailsService接口，重写其中的方法。更加用户名从数据库中查询用户信息
 
 ~~~~java
+package com.cxx.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cxx.domain.LoginUser;
+import com.cxx.domain.User;
+import com.cxx.mapper.UserMapper;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
 /**
- * @Author 三更  B站： https://space.bilibili.com/663528522
+ * @author 陈喜喜
+ * @date 2023-01-06 16:44
  */
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
-
-    @Autowired
+    @Resource
     private UserMapper userMapper;
+    @Resource
+    private PasswordEncoder passwordEncoder;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        //根据用户名查询用户信息
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUserName,username);
-        User user = userMapper.selectOne(wrapper);
-        //如果查询不到数据就通过抛出异常来给出提示
-        if(Objects.isNull(user)){
-            throw new RuntimeException("用户名或密码错误");
+        //查询数据库
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getUserName, username);
+        User user = userMapper.selectOne(queryWrapper);
+        //判断是否存在这个用户
+        if (Objects.isNull(user)) {
+            throw new RuntimeException("用户名或密码错误！");
         }
-        //TODO 根据用户查询权限信息 添加到LoginUser中
-        
-        //封装成UserDetails对象返回 
-        return new LoginUser(user);
+        //这里对admin用户特殊处理，admin用户在数据库的密码是明文，所以要手动加密再返回
+        //而其他用户不需要，因为在数据库存的就是密文通过Bcrypt加密的密文，因为SecurityConfig配置了,如下，就默认是Bcrypt加密
+        //@Bean
+        //    public PasswordEncoder passwordEncoder(){
+        //        return new BCryptPasswordEncoder();
+        //    }
+        if ("admin".equals(user.getUserName())) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
+        //ToDo 查询用户对应的权限信息返回  在数据库（RBAC权限模型）查出来 然后返回给前端进行vue组件路由（嘻嘻博客）
+        //ToDo 然而嘻嘻博客的做法是防君子不防小人，用普通用户登录拿到token，带着token直接绕过前端去访问服务端就没有权限控制了
+        //ToDo 解决办法就是在相应的api上加上这个注解@PreAuthorize("hasAuthority('test')")，test代表权限字符串
+        List<String> list = Arrays.asList("test","admin"); // 这里简单模拟数据库查出来
+
+        return new LoginUser(user, list);
+        //返回给SpringSecurity框架的DaoAuthenticationProvider去做密码校验
+        // （UserDetails的密码与Authentication的密码做比较）
+        //  UserDetails存的是数据库查出来的密码      Authentication存的是前端输入过来的密码
     }
 }
+
 ~~~~
 
 因为UserDetailsService方法的返回值是UserDetails类型，所以需要定义一个类，实现该接口，把用户信息封装在其中。
 
 ```java
+package com.cxx.domain;
+
+import com.alibaba.fastjson.annotation.JSONField;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
- * @Author 三更  B站： https://space.bilibili.com/663528522
+ * @author 陈喜喜
+ * @date 2023-01-06 17:04
  */
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class LoginUser implements UserDetails {
+    private static final long serialVersionUID = 5189048561133591815L;
 
     private User user;
-
+    private List<String> permissions;  // 权限信息集合
+    @JSONField(serialize = false)  // 这样存入redis就会忽略这个成员变量，不会序列化到流再到redis当中
+    private List<SimpleGrantedAuthority> authorities;  //这样就之会第一次会获取权限信息返回
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+        // 这里这么做是因为，List<String> permissions是我们自己弄的权限信息，
+        // 而SpringSecurity需要的权限信息是这个类型的List<SimpleGrantedAuthority> authorities
+
+        if (this.authorities != null) {  // 这样就之会第一次会获取权限信息返回
+            return this.authorities;
+        }
+        // 把permissions中String类型的权限信息封装成SimpleGrantedAuthority对象
+        this.authorities = permissions.stream()
+                .map(SimpleGrantedAuthority::new)  //等于.map(permission -> new SimpleGrantedAuthority(permission))
+                .collect(Collectors.toList());
+        return this.authorities;
+    }
+
+    public LoginUser(User user, List<String> permissions) {
+        this.user = user;
+        this.permissions = permissions;
     }
 
     @Override
@@ -1029,15 +1068,10 @@ public class LoginUser implements UserDetails {
         return true;
     }
 }
+
 ```
 
-注意：如果要测试，需要往用户表中写入用户数据，并且如果你想让用户的密码是明文存储，需要在密码前加{noop}。例如
-
-![image-20211216123945882](img/image-20211216123945882.png)
-
-这样登陆的时候就可以用sg作为用户名，1234作为密码来登陆了。
-
-
+注意：如果要测试，需要往用户表中写入用户数据，并且如果你想让用户的密码是明文存储，需要在密码前加{noop}。
 
 ##### 2.3.3.2 密码加密存储
 
@@ -1052,19 +1086,84 @@ public class LoginUser implements UserDetails {
 ​	我们可以定义一个SpringSecurity的配置类，SpringSecurity要求这个配置类要继承WebSecurityConfigurerAdapter。
 
 ~~~~java
+package com.cxx.config;
+
+import com.cxx.filter.JwtAuthenticationTokenFilter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import javax.annotation.Resource;
+
 /**
- * @Author 三更  B站： https://space.bilibili.com/663528522
+ * @author 陈喜喜
+ * @date 2023-01-06 17:29
+ *
+ * 只有加了@EnableGlobalMethodSecurity(prePostEnabled=true)
+ * 那么在上面使用的 @PreAuthorize(“hasAuthority(‘admin’)”)才会生效
+ * 要改变默认表单登录页面,前端写好页面发请求,后端在对应的service层调用authenticate()这些就可以了,例:本项目的LoginServiceImpl
  */
 @Configuration
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-
+    @Resource
+    private JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter;
+    @Resource
+    private AccessDeniedHandler accessDeniedHandler;
+    @Resource
+    private AuthenticationEntryPoint authenticationEntryPoint;
 
     @Bean
     public PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
     }
 
+    @Bean
+    @Override
+    public AuthenticationManager authenticationManagerBean() throws Exception {
+        return super.authenticationManagerBean();
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                //关闭csrf  前后端分离的项目不存在csrf攻击  不关还要去校验csrf_token
+                .csrf().disable()
+                //不通过Session获取SecurityContext
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and()
+                .authorizeRequests()
+                // 对于登录接口 允许匿名访问  匿名访问就算没登陆认证可以访问  登录认证了就不可以访问
+                .antMatchers("/user/login").anonymous()
+                //.antMatchers("/hello").permitAll    // 这个是允许所有访问
+                .antMatchers("/hello").hasAuthority("test")//等于@PreAuthorize("hasAuthority('test')")
+                // 除上面外的所有请求全部需要鉴权认证
+                .anyRequest().authenticated();
+
+        //配置jwt过滤器
+        http.addFilterBefore(jwtAuthenticationTokenFilter, UsernamePasswordAuthenticationFilter.class);
+
+        //配置异常处理器
+        http.exceptionHandling()
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler);
+
+        http.logout().disable();
+
+        //允许跨域  SpringSecurity的跨域配置
+        http.cors();
+    }
 }
+
 ~~~~
 
 ##### 2.3.3.3 登陆接口
@@ -1087,73 +1186,101 @@ public class LoginController {
         return loginServcie.login(user);
     }
 }
-
 ~~~~
 
 ~~~~java
+package com.cxx.service.impl;
+
+import com.cxx.domain.LoginUser;
+import com.cxx.domain.ResponseResult;
+import com.cxx.domain.User;
+import com.cxx.service.LoginService;
+import com.cxx.utils.JwtUtil;
+import com.cxx.utils.RedisCache;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
 /**
- * @Author 三更  B站： https://space.bilibili.com/663528522
+ * @author 陈喜喜
+ * @date 2023-01-07 14:04
+ *
+ * Spring security 会将登录用户数据保存在 Session 中。但是，为了使用方便 Spring Security 在此基础上还做了一些改进，
+ * 其中最主要的一个变化就是线程绑定。当用户登录成功后,Spring Security 会将登录成功的用户信息保存到 SecurityContextHolder 中。
+ * 通过ThreadLocal+策略模式实现
+ * SecurityContextHolder 中的数据保存默认景通过Threadlocal 来实现的，使用 Threadlocal 创建的变量只能被当前线程访问，
+ * 不能被其他线程访问和修改，也就是用户数据和请求线程绑定在一起。当登录请求处理完毕后，Spring Security会将Security ContextHolder
+ * 中的数据拿出来保存到 Session 中，同时将 SecurityContexHolder 中的数据清空。以后每当有请求到来时，Spring Security 就会先从
+ * Session 中取出用户登录数据，保存到SecuritvContextHolder 中，方便在该请求的后续处理过程中使用，同时在请求结束时
+ * 将 SecurityContextHolder 中的数据拿出来保存到 Session 中，然后将 Security SecurityContextHolder 中的数据清空，
+ * 实际上 SecurityContextHolder 中存储是 SecurityContext. 在 SecurityContext 中存储是 Authentication.
+ *
+ * SecurityContextHolder将所有登录的用户信息都保存，每个登录的用户都可以通过SecurityContextHolder.getContext().getAuthentication()
+ * 方式获取当前自己保存的用户信息多用户系统，比如典型的Web系统，整个生命周期可能同时有多个用户在使用。这时候应用需要保存多个
+ * SecurityContext（安全上下文），需要利用ThreadLocal进行保存，每个线程都可以利用ThreadLocal获取其自己的SecurityContext，
+ * 及安全上下文。
  */
-@Configuration
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
-
-
-    @Bean
-    public PasswordEncoder passwordEncoder(){
-        return new BCryptPasswordEncoder();
-    }
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http
-                //关闭csrf
-                .csrf().disable()
-                //不通过Session获取SecurityContext
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-                .authorizeRequests()
-                // 对于登录接口 允许匿名访问
-                .antMatchers("/user/login").anonymous()
-                // 除上面外的所有请求全部需要鉴权认证
-                .anyRequest().authenticated();
-    }
-
-    @Bean
-    @Override
-    public AuthenticationManager authenticationManagerBean() throws Exception {
-        return super.authenticationManagerBean();
-    }
-}
-~~~~
-
-​	
-
-~~~~java
 @Service
-public class LoginServiceImpl implements LoginServcie {
-
-    @Autowired
+public class LoginServiceImpl implements LoginService {
+    @Resource
     private AuthenticationManager authenticationManager;
-    @Autowired
+    @Resource
     private RedisCache redisCache;
 
     @Override
     public ResponseResult login(User user) {
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getUserName(),user.getPassword());
-        Authentication authenticate = authenticationManager.authenticate(authenticationToken);
-        if(Objects.isNull(authenticate)){
-            throw new RuntimeException("用户名或密码错误");
+        System.out.println("进入了login（），"+user.toString());
+        //AuthenticationManager authenticate进行用户认证
+
+        // 这里用前端传来的用户名和密码去new的时候会自动去和UserDetailsServiceImpl数据库查来的loginUser的用户名和密码去比对
+        // 返回值是一个UsernamePasswordAuthenticationToken，调authenticate()方法，返回值是一个Authentication
+        // 认证没成功就是null，成功了返回的authentication就存有数据库查出来的loginUser的用户信息
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getUserName(), user.getPassword());
+        Authentication authenticate = null;
+        try {
+            authenticate = authenticationManager.authenticate(authenticationToken);
+        } catch (AuthenticationException e) {
+            e.printStackTrace();
         }
-        //使用userid生成token
+        //如果认证不通过，给出对应的提示,返回的authenticate会为空
+        if(Objects.isNull(authenticate)){
+            throw new RuntimeException("登陆失败");
+        }
+        //如果认证通过了，使用userId生成一个jwt，jwt存到ResponseResult返回给客户端
         LoginUser loginUser = (LoginUser) authenticate.getPrincipal();
         String userId = loginUser.getUser().getId().toString();
         String jwt = JwtUtil.createJWT(userId);
-        //authenticate存入redis
-        redisCache.setCacheObject("login:"+userId,loginUser);
-        //把token响应给前端
-        HashMap<String,String> map = new HashMap<>();
-        map.put("token",jwt);
-        return new ResponseResult(200,"登陆成功",map);
+
+        //把完整的用户信息存入redis，userId作为key，可以减少数据库的IO磁盘操作，提高效率
+        HashMap<String, String> map = new HashMap<>();
+        map.put("token", jwt);
+        redisCache.setCacheObject("login:"+userId,loginUser,30, TimeUnit.MINUTES);
+        redisCache.setCacheObject("token:"+userId,jwt,30, TimeUnit.MINUTES);
+
+        return new ResponseResult<Map>(200,"登录成功",map);
+    }
+
+    @Override
+    public ResponseResult logout() {
+        //获取SecurityContextHolder中的用户id
+        UsernamePasswordAuthenticationToken authentication =
+                (UsernamePasswordAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        LoginUser loginUser = (LoginUser) authentication.getPrincipal();
+        Long userId = loginUser.getUser().getId();
+
+        //输出redis中的值
+        redisCache.deleteObject("login:" + userId);
+
+        return new ResponseResult(200,"退出成功");
     }
 }
 
@@ -1172,90 +1299,90 @@ public class LoginServiceImpl implements LoginServcie {
 
 
 ~~~~java
+package com.cxx.filter;
+
+import com.alibaba.fastjson.JSON;
+import com.cxx.domain.LoginUser;
+import com.cxx.domain.ResponseResult;
+import com.cxx.utils.JwtUtil;
+import com.cxx.utils.RedisCache;
+import com.cxx.utils.WebUtils;
+import io.jsonwebtoken.Claims;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import javax.annotation.Resource;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Objects;
+
+/**
+ * @author 陈喜喜
+ * @date 2023-01-07 17:50
+ */
 @Component
 public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
-
-    @Autowired
+    @Resource
     private RedisCache redisCache;
 
+    //@SneakyThrows  //lombok的抛出所有Exception 相当于throws Exception
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         //获取token
         String token = request.getHeader("token");
-        if (!StringUtils.hasText(token)) {
-            //放行
+        if(!StringUtils.hasText(token)){
+            //token都没有，直接放行
             filterChain.doFilter(request, response);
-            return;
+            return;//这里直接return是因为结束后续代码，也可以用if-else代替
+            //直接放行后，SecurityContextHolder没有用户信息也没有一个认证的状态，所以会接着走后面的过滤器，再进行用户认证
         }
+
         //解析token
-        String userid;
+        String userId;
         try {
             Claims claims = JwtUtil.parseJWT(token);
-            userid = claims.getSubject();
+            userId = claims.getSubject();  //通过token解析拿到userId
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("token非法");
+            throw new RuntimeException("token 非法异常");
         }
-        //从redis中获取用户信息
-        String redisKey = "login:" + userid;
+
+        //从redis拿到用户信息
+        String redisKey = "login:"+userId;
         LoginUser loginUser = redisCache.getCacheObject(redisKey);
-        if(Objects.isNull(loginUser)){
-            throw new RuntimeException("用户未登录");
+        if(Objects.isNull(loginUser)){  //一般这是过期的情况
+            //return new ResponseResult(403, "用户未登录");
+            //这里不能return，只能是void方法，所以这里通常用一个工具类主动发一个响应给客户端
+            WebUtils.renderString(response, JSON.toJSONString(new ResponseResult(403,"用户未登录或已过期")));
+            return;
+            //throw new RuntimeException("用户未登录");  //这样不会放回信息给客户端
         }
+
         //存入SecurityContextHolder
-        //TODO 获取权限信息封装到Authentication中
+        //因为存在这，SpringSecurity每层过滤器都会先看这有没有用户信息并且是否是一个认证的状态，如果ok就直接全放行
+        //TODO 获取权限信息封装到Authentication中  第三个参数就是存的权限信息的集合
         UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(loginUser,null,null);
+                new UsernamePasswordAuthenticationToken(loginUser, null, loginUser.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-        //放行
-        filterChain.doFilter(request, response);
+
+        filterChain.doFilter(request, response);//放行
     }
 }
+
 ~~~~
 
-~~~~java
-/**
- * @Author 三更  B站： https://space.bilibili.com/663528522
- */
-@Configuration
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+并在SecurityConfig加上
 
-
-    @Bean
-    public PasswordEncoder passwordEncoder(){
-        return new BCryptPasswordEncoder();
-    }
-
-
-    @Autowired
-    JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter;
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http
-                //关闭csrf
-                .csrf().disable()
-                //不通过Session获取SecurityContext
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-                .authorizeRequests()
-                // 对于登录接口 允许匿名访问
-                .antMatchers("/user/login").anonymous()
-                // 除上面外的所有请求全部需要鉴权认证
-                .anyRequest().authenticated();
-
-        //把token校验过滤器添加到过滤器链中
+```java
+//把token校验过滤器添加到过滤器链中
         http.addFilterBefore(jwtAuthenticationTokenFilter, UsernamePasswordAuthenticationFilter.class);
-    }
-
-    @Bean
-    @Override
-    public AuthenticationManager authenticationManagerBean() throws Exception {
-        return super.authenticationManagerBean();
-    }
-}
-
-~~~~
+```
 
 
 
@@ -1264,42 +1391,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 ​	我们只需要定义一个登陆接口，然后获取SecurityContextHolder中的认证信息，删除redis中对应的数据即可。
 
 ~~~~java
-/**
- * @Author 三更  B站： https://space.bilibili.com/663528522
- */
-@Service
-public class LoginServiceImpl implements LoginServcie {
-
-    @Autowired
-    private AuthenticationManager authenticationManager;
-    @Autowired
-    private RedisCache redisCache;
-
-    @Override
-    public ResponseResult login(User user) {
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getUserName(),user.getPassword());
-        Authentication authenticate = authenticationManager.authenticate(authenticationToken);
-        if(Objects.isNull(authenticate)){
-            throw new RuntimeException("用户名或密码错误");
-        }
-        //使用userid生成token
-        LoginUser loginUser = (LoginUser) authenticate.getPrincipal();
-        String userId = loginUser.getUser().getId().toString();
-        String jwt = JwtUtil.createJWT(userId);
-        //authenticate存入redis
-        redisCache.setCacheObject("login:"+userId,loginUser);
-        //把token响应给前端
-        HashMap<String,String> map = new HashMap<>();
-        map.put("token",jwt);
-        return new ResponseResult(200,"登陆成功",map);
-    }
-
     @Override
     public ResponseResult logout() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        //获取SecurityContextHolder中的用户id
+        UsernamePasswordAuthenticationToken authentication =
+                (UsernamePasswordAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
-        Long userid = loginUser.getUser().getId();
-        redisCache.deleteObject("login:"+userid);
+        Long userId = loginUser.getUser().getId();
+
+        //输出redis中的值
+        redisCache.deleteObject("login:" + userId);
+
         return new ResponseResult(200,"退出成功");
     }
 }
@@ -1366,31 +1468,10 @@ public class HelloController {
 
 ​	我们之前定义了UserDetails的实现类LoginUser，想要让其能封装权限信息就要对其进行修改。
 
+在loginUser加入以下内容
+
 ~~~~java
-package com.sangeng.domain;
-
-import com.alibaba.fastjson.annotation.JSONField;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
-
-/**
- * @Author 三更  B站： https://space.bilibili.com/663528522
- */
-@Data
-@NoArgsConstructor
-public class LoginUser implements UserDetails {
-
-    private User user;
-        
-    //存储权限信息
+//存储权限信息
     private List<String> permissions;
     
     
@@ -1415,71 +1496,13 @@ public class LoginUser implements UserDetails {
                 .collect(Collectors.toList());
         return authorities;
     }
-
-    @Override
-    public String getPassword() {
-        return user.getPassword();
-    }
-
-    @Override
-    public String getUsername() {
-        return user.getUserName();
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
-    }
-}
-
 ~~~~
 
 ​		LoginUser修改完后我们就可以在UserDetailsServiceImpl中去把权限信息封装到LoginUser中了。我们写死权限进行测试，后面我们再从数据库中查询权限信息。
 
+在UserDetailsServiceImpl加上以下内容
+
 ~~~~java
-package com.sangeng.service.impl;
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
-import com.sangeng.domain.LoginUser;
-import com.sangeng.domain.User;
-import com.sangeng.mapper.UserMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-
-/**
- * @Author 三更  B站： https://space.bilibili.com/663528522
- */
-@Service
-public class UserDetailsServiceImpl implements UserDetailsService {
-
-    @Autowired
-    private UserMapper userMapper;
-
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
@@ -1492,8 +1515,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         List<String> list = new ArrayList<>(Arrays.asList("test"));
         return new LoginUser(user,list);
     }
-}
-
 ~~~~
 
 
@@ -1504,15 +1525,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
 ​	RBAC权限模型（Role-Based Access Control）即：基于角色的权限控制。这是目前最常被开发者使用也是相对易用、通用权限模型。
 
-​	![image-20211222110249727](img/image-20211222110249727.png)
+​	![image](http://xxblog.xyz/2023/01/09/fc016f69176e4bc3bee063dec2e42416.png)
 
 ##### 3.2.3.2 准备工作
 
 ~~~~sql
 
-CREATE DATABASE /*!32312 IF NOT EXISTS*/`sg_security` /*!40100 DEFAULT CHARACTER SET utf8mb4 */;
+CREATE DATABASE /*!32312 IF NOT EXISTS*/`xx_security` /*!40100 DEFAULT CHARACTER SET utf8mb4 */;
 
-USE `sg_security`;
+USE `xx_security`;
 
 /*Table structure for table `sys_menu` */
 
@@ -1613,87 +1634,7 @@ WHERE
 	AND m.`status` = 0
 ~~~~
 
-
-
-
-
-
-
-~~~~java
-package com.sangeng.domain;
-
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.io.Serializable;
-import java.util.Date;
-
-/**
- * 菜单表(Menu)实体类
- *
- * @author makejava
- * @since 2021-11-24 15:30:08
- */
-@TableName(value="sys_menu")
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class Menu implements Serializable {
-    private static final long serialVersionUID = -54979041104113736L;
-    
-        @TableId
-    private Long id;
-    /**
-    * 菜单名
-    */
-    private String menuName;
-    /**
-    * 路由地址
-    */
-    private String path;
-    /**
-    * 组件路径
-    */
-    private String component;
-    /**
-    * 菜单状态（0显示 1隐藏）
-    */
-    private String visible;
-    /**
-    * 菜单状态（0正常 1停用）
-    */
-    private String status;
-    /**
-    * 权限标识
-    */
-    private String perms;
-    /**
-    * 菜单图标
-    */
-    private String icon;
-    
-    private Long createBy;
-    
-    private Date createTime;
-    
-    private Long updateBy;
-    
-    private Date updateTime;
-    /**
-    * 是否删除（0未删除 1已删除）
-    */
-    private Integer delFlag;
-    /**
-    * 备注
-    */
-    private String remark;
-}
-~~~~
+以及Menu的实体类
 
 
 
@@ -1705,12 +1646,12 @@ public class Menu implements Serializable {
 
 ~~~~java
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.sangeng.domain.Menu;
+import com.cxx.domain.Menu;
 
 import java.util.List;
 
 /**
- * @Author 三更  B站： https://space.bilibili.com/663528522
+ * 
  */
 public interface MenuMapper extends BaseMapper<Menu> {
     List<String> selectPermsByUserId(Long id);
@@ -1722,7 +1663,7 @@ public interface MenuMapper extends BaseMapper<Menu> {
 ~~~~xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
-<mapper namespace="com.sangeng.mapper.MenuMapper">
+<mapper namespace="com.cxx.mapper.MenuMapper">
 
 
     <select id="selectPermsByUserId" resultType="java.lang.String">
@@ -1746,7 +1687,7 @@ public interface MenuMapper extends BaseMapper<Menu> {
 ~~~~yaml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/sg_security?characterEncoding=utf-8&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/xx_security?characterEncoding=utf-8&serverTimezone=UTC
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -1754,7 +1695,7 @@ spring:
     host: localhost
     port: 6379
 mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml 
+  mapper-locations: classpath*:/mapper/**/*.xml # 默认就是这个
 
 ~~~~
 
@@ -1764,7 +1705,7 @@ mybatis-plus:
 
 ~~~~java
 /**
- * @Author 三更  B站： https://space.bilibili.com/663528522
+ * 
  */
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -1826,9 +1767,6 @@ public class AccessDeniedHandlerImpl implements AccessDeniedHandler {
 ~~~~
 
 ~~~~java
-/**
- * @Author 三更  B站： https://space.bilibili.com/663528522
- */
 @Component
 public class AuthenticationEntryPointImpl implements AuthenticationEntryPoint {
     @Override
@@ -2198,8 +2136,4 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ~~~~
 
-
-
-
-
-### 其他认证方案畅想
+### 其他认证方案等等
